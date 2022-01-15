@@ -1,13 +1,14 @@
 import MeetupDetail from "../../components/meetups/MeetupDetail";
+import { MongoClient, ObjectId } from "mongodb";
 
-function MeetupDetails() {
+function MeetupDetails(props) {
   return (
     <div>
       <MeetupDetail
-        image="https://corporette.com/wp-content/uploads/2017/03/best-places-for-informal-business-meetings-for-women-lawyers-consultants-and-more.jpg"
-        title="A First Meetup"
-        address="address"
-        description="description"
+        image={props.meetupData.image}
+        title={props.meetupData.title}
+        address={props.meetupData.address}
+        description={props.meetupData.description}
       ></MeetupDetail>{" "}
     </div>
   );
@@ -15,36 +16,47 @@ function MeetupDetails() {
 
 // this function should add if page dynamic and using getStaticProps
 export async function getStaticPaths() {
+  const client = await MongoClient.connect(
+    "mongodb+srv://shalitha:shalitha@cluster0.xchmn.mongodb.net/meetups?retryWrites=true&w=majority"
+  );
+  const db = client.db();
+
+  const meetupCollection = db.collection("meetups");
+
+  const meetups = await meetupCollection.find({}, { _id: 1 }).toArray();
+
+  client.close();
   return {
-    fallback: false,
-    paths: [
-      {
-        params: {
-          meetupId: "1",
-        },
-      },
-      {
-        params: {
-          meetupId: "2",
-        },
-      },
-    ],
+    fallback: true,
+    paths: meetups.map((meetup) => ({
+      params: { meetupId: meetup._id.toString() },
+    })),
   };
 }
 
 export async function getStaticProps(context) {
   // fetch data for a single meetup
   const meetupId = context.params.meetupId;
+
+  const client = await MongoClient.connect(
+    "mongodb+srv://shalitha:shalitha@cluster0.xchmn.mongodb.net/meetups?retryWrites=true&w=majority"
+  );
+  const db = client.db();
+
+  const meetupCollection = db.collection("meetups");
+
+  const meetup = await meetupCollection.findOne({ _id: ObjectId(meetupId) });
+
+  client.close();
   console.log("meetupId", meetupId);
   return {
     props: {
       meetupData: {
-        image:
-          "https://corporette.com/wp-content/uploads/2017/03/best-places-for-informal-business-meetings-for-women-lawyers-consultants-and-more.jpg",
-        title: "A First Meetup",
-        address: "address",
-        description: "description",
-        id: "1",
+        id: meetup._id.toString(),
+        title: meetup.title,
+        address: meetup.address,
+        image: meetup.image,
+        description: meetup.description,
       },
     },
   };
